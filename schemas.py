@@ -1,48 +1,59 @@
 """
-Database Schemas
+Database Schemas for Food Delivery App
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
+Each Pydantic model represents a MongoDB collection. Collection name is the lowercase of the class name.
+- Restaurant -> "restaurant"
+- MenuItem -> "menuitem"
+- Order -> "order"
+- Customer -> "customer"
 
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+These schemas are used for validation and for the database viewer.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional
+from pydantic import BaseModel, Field, EmailStr
 
-# Example schemas (replace with your own):
 
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+class Restaurant(BaseModel):
+    name: str = Field(..., description="Restaurant name")
+    description: Optional[str] = Field(None, description="Short description")
+    cuisine: Optional[str] = Field(None, description="Cuisine type, e.g., Italian, Indian")
+    image_url: Optional[str] = Field(None, description="Cover image URL")
+    rating: Optional[float] = Field(4.5, ge=0, le=5, description="Average rating")
+    delivery_fee: Optional[float] = Field(2.99, ge=0, description="Delivery fee")
+    eta_minutes: Optional[int] = Field(30, ge=1, description="Estimated delivery time in minutes")
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
+
+class MenuItem(BaseModel):
+    restaurant_id: str = Field(..., description="Restaurant ObjectId as string")
+    name: str = Field(..., description="Menu item name")
+    description: Optional[str] = Field(None, description="Item description")
     price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+    image_url: Optional[str] = Field(None, description="Item image URL")
+    is_veg: Optional[bool] = Field(False, description="Is vegetarian")
+    spicy_level: Optional[int] = Field(0, ge=0, le=3, description="Spicy level 0-3")
 
-# Add your own schemas here:
-# --------------------------------------------------
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Customer(BaseModel):
+    name: str
+    email: EmailStr
+    address: str
+    phone: Optional[str] = None
+
+
+class OrderItem(BaseModel):
+    menu_item_id: str
+    quantity: int = Field(..., ge=1)
+
+
+class Order(BaseModel):
+    restaurant_id: str
+    customer_id: Optional[str] = Field(None, description="Optional: link to customer")
+    customer_name: Optional[str] = None
+    customer_address: Optional[str] = None
+    customer_email: Optional[EmailStr] = None
+    items: List[OrderItem]
+    subtotal: float = 0
+    delivery_fee: float = 0
+    total: float = 0
+    status: str = Field("pending", description="pending, confirmed, preparing, out_for_delivery, delivered, cancelled")
